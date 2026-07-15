@@ -1,0 +1,20 @@
+[Unit]
+Description=File Browser (Anime Stack)
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=filebrowser
+Group=filebrowser
+WorkingDirectory=/var/lib/filebrowser
+Environment=HOME=/var/lib/filebrowser
+ExecStart=/usr/local/bin/filebrowser --database=/var/lib/filebrowser/filebrowser.db
+Restart=on-failure
+RestartSec=3
+UMask=0027
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

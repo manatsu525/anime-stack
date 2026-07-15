@@ -1,0 +1,70 @@
+[Unit]
+Description=Anime Hub aria2 BT downloader
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=root
+# Same group as File Browser so it can delete/rename downloads
+Group=filebrowser
+# files 664 / dirs 775 — group writable for filebrowser user
+UMask=0002
+EnvironmentFile=-/etc/anime-hub.env
+# Ensure session file exists
+ExecStartPre=/bin/mkdir -p ${APP_DIR}/logs ${APP_DIR}/session /root/.cache/aria2
+ExecStartPre=/bin/touch ${APP_DIR}/session/aria2.session
+# Keep download root group-writable + setgid for nested torrent folders
+ExecStartPre=/bin/bash -c 'chown root:filebrowser "${DOWNLOAD_DIR}" 2>/dev/null || true; chmod 2775 "${DOWNLOAD_DIR}" 2>/dev/null || true'
+ExecStart=/usr/bin/aria2c \
+  --enable-rpc \
+  --rpc-listen-all=false \
+  --rpc-listen-port=${ARIA2_RPC_PORT} \
+  --rpc-secret=${ARIA2_RPC_SECRET} \
+  --rpc-allow-origin-all=true \
+  --dir=${DOWNLOAD_DIR} \
+  --continue=true \
+  --max-concurrent-downloads=10 \
+  --max-connection-per-server=16 \
+  --split=16 \
+  --min-split-size=1M \
+  --listen-port=51413 \
+  --dht-listen-port=51414 \
+  --enable-dht=true \
+  --enable-dht6=false \
+  --enable-peer-exchange=true \
+  --bt-enable-lpd=true \
+  --bt-max-peers=128 \
+  --bt-request-peer-speed-limit=1M \
+  --bt-tracker-connect-timeout=10 \
+  --bt-tracker-timeout=10 \
+  --bt-tracker-interval=300 \
+  --bt-save-metadata=true \
+  --bt-load-saved-metadata=true \
+  --bt-hash-check-seed=true \
+  --bt-remove-unselected-file=false \
+  --bt-tracker=http://nyaa.tracker.wf:7777/announce,http://tracker.mywaifu.best:6969/announce,http://t.nyaatracker.com/announce,udp://tracker.torrent.eu.org:451/announce,udp://open.stealth.si:80/announce,udp://exodus.desync.com:6969/announce,udp://tracker.opentrackr.org:1337/announce,udp://tracker.moeking.me:6969/announce,http://tracker.openbittorrent.com:80/announce \
+  --seed-ratio=0.1 \
+  --follow-torrent=true \
+  --file-allocation=none \
+  --check-integrity=false \
+  --auto-file-renaming=true \
+  --allow-overwrite=false \
+  --user-agent=AnimeHub/1.0 \
+  --peer-agent=qBittorrent/4.6.0 \
+  --peer-id-prefix=-qB4600- \
+  --summary-interval=0 \
+  --console-log-level=notice \
+  --log=${APP_DIR}/logs/aria2.log \
+  --log-level=notice \
+  --save-session=${APP_DIR}/session/aria2.session \
+  --save-session-interval=30 \
+  --input-file=${APP_DIR}/session/aria2.session \
+  --always-resume=true \
+  --max-overall-upload-limit=1M
+Restart=on-failure
+RestartSec=3
+LimitNOFILE=65535
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,973 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Anime Hub · 动漫资源整合</title>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --bg2: #161b22;
+      --bg3: #21262d;
+      --border: #30363d;
+      --text: #e6edf3;
+      --muted: #8b949e;
+      --accent: #7c5cff;
+      --accent2: #58a6ff;
+      --ok: #3fb950;
+      --warn: #d29922;
+      --err: #f85149;
+      --dmhy: #e85d04;
+      --acgrip: #2a9d8f;
+      --nyaa: #6a994e;
+      --radius: 12px;
+      --shadow: 0 8px 32px rgba(0,0,0,.35);
+      --font: "Segoe UI", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+      --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); font-family: var(--font); min-height: 100%; }
+    body {
+      background-image:
+        radial-gradient(1200px 600px at 10% -10%, rgba(124,92,255,.18), transparent 60%),
+        radial-gradient(900px 500px at 100% 0%, rgba(88,166,255,.12), transparent 55%),
+        radial-gradient(700px 400px at 50% 100%, rgba(42,157,143,.08), transparent 50%);
+      background-attachment: fixed;
+    }
+    a { color: var(--accent2); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .app { max-width: 1280px; margin: 0 auto; padding: 20px 18px 60px; }
+
+    header.top {
+      display: flex; flex-wrap: wrap; align-items: center; gap: 14px 20px;
+      margin-bottom: 18px;
+    }
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .logo {
+      width: 42px; height: 42px; border-radius: 12px;
+      background: linear-gradient(135deg, #7c5cff, #58a6ff 55%, #2a9d8f);
+      display: grid; place-items: center; font-weight: 800; font-size: 18px;
+      box-shadow: 0 4px 16px rgba(124,92,255,.4);
+    }
+    .brand h1 { margin: 0; font-size: 1.35rem; letter-spacing: .02em; }
+    .brand p { margin: 2px 0 0; color: var(--muted); font-size: .82rem; }
+
+    .tabs {
+      display: flex; gap: 6px; margin-left: auto; background: var(--bg2);
+      padding: 4px; border-radius: 999px; border: 1px solid var(--border);
+    }
+    .tab {
+      border: 0; background: transparent; color: var(--muted); cursor: pointer;
+      padding: 8px 16px; border-radius: 999px; font-size: .9rem; font-weight: 600;
+      transition: .15s ease;
+    }
+    .tab.active { background: var(--bg3); color: var(--text); box-shadow: inset 0 0 0 1px var(--border); }
+    .tab:hover:not(.active) { color: var(--text); }
+    .badge {
+      display: inline-block; min-width: 18px; padding: 0 6px; margin-left: 4px;
+      border-radius: 999px; background: var(--accent); color: #fff; font-size: .72rem;
+      line-height: 18px; text-align: center; vertical-align: middle;
+    }
+    .badge.hide { display: none; }
+
+    .panel { display: none; }
+    .panel.active { display: block; }
+
+    .card {
+      background: rgba(22,27,34,.88); border: 1px solid var(--border);
+      border-radius: var(--radius); box-shadow: var(--shadow); backdrop-filter: blur(8px);
+    }
+
+    .search-bar {
+      display: flex; flex-wrap: wrap; gap: 10px; padding: 14px;
+      align-items: center;
+    }
+    .search-bar input[type="search"] {
+      flex: 1 1 280px; min-width: 200px; height: 44px; padding: 0 14px;
+      border-radius: 10px; border: 1px solid var(--border); background: var(--bg);
+      color: var(--text); font-size: 1rem; outline: none;
+    }
+    .search-bar input[type="search"]:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(124,92,255,.2); }
+    .btn {
+      height: 44px; padding: 0 16px; border-radius: 10px; border: 1px solid var(--border);
+      background: var(--bg3); color: var(--text); font-weight: 600; cursor: pointer;
+      font-size: .92rem; transition: .12s ease; white-space: nowrap;
+    }
+    .btn:hover { border-color: var(--muted); }
+    .btn:disabled { opacity: .5; cursor: not-allowed; }
+    .btn-primary {
+      background: linear-gradient(135deg, #6d4dff, #4f8cff);
+      border-color: transparent; color: #fff;
+    }
+    .btn-primary:hover { filter: brightness(1.08); }
+    .btn-ok { background: rgba(63,185,80,.15); border-color: rgba(63,185,80,.4); color: var(--ok); }
+    .btn-warn { background: rgba(210,153,34,.12); border-color: rgba(210,153,34,.35); color: var(--warn); }
+    .btn-danger { background: rgba(248,81,73,.12); border-color: rgba(248,81,73,.35); color: var(--err); }
+    .btn-sm { height: 32px; padding: 0 10px; font-size: .82rem; border-radius: 8px; }
+    .btn-icon { width: 32px; padding: 0; display: inline-grid; place-items: center; }
+
+    .filters {
+      display: flex; flex-wrap: wrap; gap: 10px 16px; padding: 0 14px 14px;
+      align-items: center; color: var(--muted); font-size: .88rem;
+    }
+    .filters label {
+      display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
+      user-select: none; padding: 4px 10px; border-radius: 999px;
+      border: 1px solid var(--border); background: var(--bg);
+    }
+    .filters label.on-dmhy { border-color: color-mix(in srgb, var(--dmhy) 50%, var(--border)); }
+    .filters label.on-acgrip { border-color: color-mix(in srgb, var(--acgrip) 50%, var(--border)); }
+    .filters label.on-nyaa { border-color: color-mix(in srgb, var(--nyaa) 50%, var(--border)); }
+    .filters input { accent-color: var(--accent); }
+
+    .meta-row {
+      display: flex; flex-wrap: wrap; gap: 8px 14px; padding: 10px 14px;
+      border-top: 1px solid var(--border); color: var(--muted); font-size: .82rem;
+      align-items: center;
+    }
+    .src-chip {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 2px 8px; border-radius: 999px; background: var(--bg3); font-size: .78rem;
+    }
+    .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+    .dot-dmhy { background: var(--dmhy); }
+    .dot-acgrip { background: var(--acgrip); }
+    .dot-nyaa { background: var(--nyaa); }
+    .err-text { color: var(--err); }
+
+    .table-wrap { overflow-x: auto; max-width: 100%; }
+    /* download tasks: stay inside card; dropdown opens upward inside padding */
+    .table-wrap.allow-drop {
+      overflow-x: auto;
+      overflow-y: visible;
+      padding-bottom: 4px;
+    }
+    table.list {
+      width: 100%; border-collapse: collapse; font-size: .9rem;
+      table-layout: auto;
+    }
+    table.list.dl-table {
+      table-layout: fixed;
+      width: 100%;
+    }
+    table.list th {
+      text-align: left; padding: 10px 10px; color: var(--muted); font-weight: 600;
+      border-bottom: 1px solid var(--border); background: rgba(0,0,0,.15);
+      white-space: nowrap; position: sticky; top: 0;
+    }
+    table.list td {
+      padding: 10px 10px; border-bottom: 1px solid rgba(48,54,61,.7);
+      vertical-align: middle;
+    }
+    table.list tr:hover td { background: rgba(124,92,255,.05); }
+    .title-cell { min-width: 0; max-width: 100%; }
+    .title-cell .t {
+      font-weight: 600; line-height: 1.35; word-break: break-word;
+    }
+    table.list.dl-table .title-cell .t {
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      word-break: break-all;
+    }
+    .title-cell .sub {
+      color: var(--muted); font-size: .78rem; margin-top: 3px;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    table.list.dl-table th:nth-child(1),
+    table.list.dl-table td:nth-child(1) { width: 36%; }
+    table.list.dl-table th:nth-child(2),
+    table.list.dl-table td:nth-child(2) { width: 72px; }
+    table.list.dl-table th:nth-child(3),
+    table.list.dl-table td:nth-child(3) { width: 120px; }
+    table.list.dl-table th:nth-child(4),
+    table.list.dl-table td:nth-child(4) { width: 96px; }
+    table.list.dl-table th:nth-child(5),
+    table.list.dl-table td:nth-child(5) { width: 52px; }
+    table.list.dl-table th:nth-child(6),
+    table.list.dl-table td:nth-child(6) {
+      width: 168px;
+      text-align: right;
+      padding-right: 12px;
+    }
+    table.list.dl-table .col-actions .actions {
+      flex-wrap: nowrap;
+      justify-content: flex-end;
+      gap: 4px;
+    }
+    table.list.dl-table .btn-sm {
+      height: 30px; padding: 0 8px; font-size: .78rem;
+    }
+    .tag {
+      display: inline-block; font-size: .72rem; font-weight: 700; padding: 2px 7px;
+      border-radius: 6px; letter-spacing: .02em; white-space: nowrap;
+    }
+    .tag-dmhy { background: rgba(232,93,4,.18); color: #ff9f45; }
+    .tag-acgrip { background: rgba(42,157,143,.18); color: #5ed1c0; }
+    .tag-nyaa { background: rgba(106,153,78,.2); color: #a7d38b; }
+    .muted { color: var(--muted); }
+    .mono { font-family: var(--mono); font-size: .82rem; }
+    .actions { display: flex; gap: 6px; flex-wrap: wrap; }
+
+    .empty {
+      padding: 48px 20px; text-align: center; color: var(--muted);
+    }
+    .empty strong { color: var(--text); display: block; margin-bottom: 6px; font-size: 1.05rem; }
+
+    .loading {
+      padding: 28px; text-align: center; color: var(--muted);
+    }
+    .spinner {
+      width: 22px; height: 22px; border: 2px solid var(--border);
+      border-top-color: var(--accent); border-radius: 50%;
+      display: inline-block; animation: spin .7s linear infinite;
+      vertical-align: middle; margin-right: 8px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Downloads */
+    .dl-toolbar {
+      display: flex; flex-wrap: wrap; gap: 10px; padding: 14px; align-items: center;
+    }
+    .dl-toolbar .stat {
+      margin-left: auto; display: flex; gap: 14px; flex-wrap: wrap;
+      color: var(--muted); font-size: .85rem;
+    }
+    .dl-toolbar .stat b { color: var(--text); font-weight: 600; }
+    .magnet-box {
+      display: flex; flex-wrap: wrap; gap: 10px; padding: 0 14px 14px;
+    }
+    .magnet-box input, .magnet-box textarea {
+      flex: 1 1 360px; min-height: 44px; padding: 10px 12px;
+      border-radius: 10px; border: 1px solid var(--border); background: var(--bg);
+      color: var(--text); font-family: var(--mono); font-size: .85rem; resize: vertical;
+    }
+    .magnet-box input:focus, .magnet-box textarea:focus {
+      outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(124,92,255,.2);
+    }
+
+    .progress {
+      height: 8px; background: var(--bg); border-radius: 999px; overflow: hidden;
+      width: 100%; min-width: 0; max-width: 110px; border: 1px solid var(--border);
+    }
+    table.list.dl-table .progress { max-width: 100%; }
+    .progress > i {
+      display: block; height: 100%; background: linear-gradient(90deg, #6d4dff, #58a6ff);
+      border-radius: 999px; width: 0%; transition: width .3s ease;
+    }
+    .status {
+      display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: .75rem;
+      font-weight: 700; text-transform: lowercase;
+    }
+    .st-active { background: rgba(63,185,80,.15); color: var(--ok); }
+    .st-waiting, .st-paused { background: rgba(210,153,34,.15); color: var(--warn); }
+    .st-complete { background: rgba(88,166,255,.15); color: var(--accent2); }
+    .st-error, .st-removed { background: rgba(248,81,73,.15); color: var(--err); }
+
+    .crumb {
+      display: inline-flex; align-items: center; gap: 4px; flex-wrap: wrap;
+      font-size: .85rem;
+    }
+    .crumb a, .crumb button.linkish {
+      background: none; border: 0; color: var(--accent2); cursor: pointer;
+      padding: 0; font: inherit; text-decoration: none;
+    }
+    .crumb a:hover, .crumb button.linkish:hover { text-decoration: underline; }
+    .crumb .sep { color: var(--muted); margin: 0 2px; }
+    .file-icon { font-size: 1.05rem; opacity: .85; }
+    .name-link { color: var(--text); font-weight: 600; cursor: pointer; background: none; border: 0; padding: 0; font: inherit; text-align: left; }
+    .name-link:hover { color: var(--accent2); text-decoration: underline; }
+    .drop {
+      position: relative; display: inline-block;
+    }
+    .drop-menu {
+      display: none; position: absolute; right: 0; z-index: 80;
+      min-width: 168px; padding: 4px;
+      background: var(--bg2); border: 1px solid var(--border); border-radius: 8px;
+      box-shadow: var(--shadow);
+      /* open upward so last-row menus aren't clipped by page bottom */
+      bottom: calc(100% + 4px);
+      top: auto;
+    }
+    .drop.drop-down .drop-menu {
+      top: calc(100% + 4px);
+      bottom: auto;
+    }
+    .drop.open .drop-menu { display: block; }
+    .drop-menu button {
+      display: block; width: 100%; text-align: left; border: 0; background: transparent;
+      color: var(--text); padding: 8px 10px; border-radius: 6px; cursor: pointer; font-size: .82rem;
+    }
+    .drop-menu button:hover { background: var(--bg3); }
+    .drop-menu button.danger { color: var(--err); }
+    .card { overflow: hidden; }
+    .card.dl-card { overflow: visible; }
+    .app { overflow-x: hidden; }
+    .toast-wrap {
+      position: fixed; right: 16px; bottom: 16px; z-index: 1000;
+      display: flex; flex-direction: column; gap: 8px; max-width: min(420px, calc(100vw - 32px));
+    }
+    .toast {
+      background: var(--bg2); border: 1px solid var(--border); border-radius: 10px;
+      padding: 12px 14px; box-shadow: var(--shadow); font-size: .9rem;
+      animation: slidein .2s ease;
+    }
+    .toast.ok { border-color: rgba(63,185,80,.45); }
+    .toast.err { border-color: rgba(248,81,73,.45); }
+    @keyframes slidein { from { transform: translateY(12px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+    footer.note {
+      margin-top: 18px; color: var(--muted); font-size: .78rem; text-align: center;
+    }
+
+    @media (max-width: 720px) {
+      .tabs { margin-left: 0; width: 100%; }
+      .tab { flex: 1; }
+      .title-cell { max-width: 280px; }
+      .dl-toolbar .stat { margin-left: 0; width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="top">
+      <div class="brand">
+        <div class="logo">AH</div>
+        <div>
+          <h1>Anime Hub</h1>
+          <p>动漫花园 · ACG.RIP · Nyaa · aria2</p>
+        </div>
+      </div>
+      <nav class="tabs">
+        <button class="tab active" data-tab="search" type="button">资源搜索</button>
+        <button class="tab" data-tab="downloads" type="button">
+          下载管理 <span class="badge hide" id="dlBadge">0</span>
+        </button>
+      </nav>
+    </header>
+
+    <!-- Search panel -->
+    <section class="panel active" id="panel-search">
+      <div class="card">
+        <form class="search-bar" id="searchForm">
+          <input type="search" id="q" placeholder="搜索番名 / 字幕组 / 关键词… 留空显示近期更新" autocomplete="off" />
+          <button class="btn btn-primary" type="submit" id="searchBtn">搜索</button>
+          <button class="btn" type="button" id="latestBtn">近期更新</button>
+        </form>
+        <div class="filters">
+          <span>来源：</span>
+          <label class="on-dmhy"><input type="checkbox" name="src" value="dmhy" checked /> 动漫花园</label>
+          <label class="on-acgrip"><input type="checkbox" name="src" value="acgrip" checked /> ACG.RIP</label>
+          <label class="on-nyaa"><input type="checkbox" name="src" value="nyaa" checked /> Nyaa</label>
+        </div>
+        <div class="meta-row" id="searchMeta">
+          <span>输入关键词搜索，或点「近期更新」拉取三站最新条目</span>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:14px;">
+        <div class="table-wrap">
+          <table class="list" id="resultTable">
+            <thead>
+              <tr>
+                <th style="width:88px">来源</th>
+                <th>标题</th>
+                <th style="width:100px">大小</th>
+                <th style="width:90px">做种</th>
+                <th style="width:140px">发布时间</th>
+                <th style="width:120px">操作</th>
+              </tr>
+            </thead>
+            <tbody id="resultBody">
+              <tr><td colspan="6"><div class="empty"><strong>还没有结果</strong>搜索或加载近期更新试试</div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- Downloads panel -->
+    <section class="panel" id="panel-downloads">
+      <div class="card dl-card">
+        <div class="dl-toolbar">
+          <button class="btn btn-sm" type="button" id="refreshDl">刷新任务</button>
+          <button class="btn btn-sm btn-warn" type="button" id="purgeDl">清理已完成记录</button>
+          <div class="stat" id="globalStat">
+            <span>↓ <b id="gDl">0 B/s</b></span>
+            <span>↑ <b id="gUl">0 B/s</b></span>
+            <span>活动 <b id="gActive">0</b></span>
+            <span>等待 <b id="gWaiting">0</b></span>
+          </div>
+        </div>
+        <div class="magnet-box">
+          <input id="magnetInput" type="text" placeholder="粘贴 magnet:?xt=... 或 torrent 链接，回车或点添加" />
+          <button class="btn btn-primary" type="button" id="addMagnetBtn">添加任务</button>
+        </div>
+        <div class="table-wrap allow-drop">
+          <table class="list dl-table">
+            <thead>
+              <tr>
+                <th>名称</th>
+                <th>状态</th>
+                <th>进度</th>
+                <th>速度</th>
+                <th>做种</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="dlBody">
+              <tr><td colspan="6"><div class="empty"><strong>暂无下载任务</strong>从搜索页添加，或粘贴磁力链</div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Local files under download dir -->
+      <div class="card" style="margin-top:14px;">
+        <div class="dl-toolbar" style="border-bottom:1px solid var(--border);">
+          <strong style="font-size:.95rem;">下载目录文件</strong>
+          <span class="muted" style="font-size:.82rem;" id="filesRootLabel">/home/share</span>
+          <button class="btn btn-sm" type="button" id="refreshFiles">刷新文件</button>
+        </div>
+        <div class="meta-row" id="filesBreadcrumb" style="gap:6px;">
+          <span class="muted">加载中…</span>
+        </div>
+        <div class="table-wrap">
+          <table class="list">
+            <thead>
+              <tr>
+                <th style="width:44px"></th>
+                <th>名称</th>
+                <th style="width:110px">大小</th>
+                <th style="width:150px">修改时间</th>
+                <th style="width:180px">操作</th>
+              </tr>
+            </thead>
+            <tbody id="filesBody">
+              <tr><td colspan="5"><div class="empty"><strong>暂无文件</strong></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <footer class="note">
+      下载目录：/home/share · Web :8765 · aria2 RPC :6800 · 无 TLS 自用面板
+    </footer>
+  </div>
+
+  <div class="toast-wrap" id="toasts"></div>
+
+  <script>
+    const $ = (s, el = document) => el.querySelector(s);
+    const $$ = (s, el = document) => [...el.querySelectorAll(s)];
+
+    const state = {
+      items: [],       // full result from last search (all sources)
+      lastData: null,  // last /api/search payload for meta
+      tasks: [],
+      loading: false,
+      pollTimer: null,
+      filesPath: "",   // relative path under download dir
+      filesRoot: "/home/share",
+    };
+
+    function toast(msg, type = "ok") {
+      const el = document.createElement("div");
+      el.className = `toast ${type}`;
+      el.textContent = msg;
+      $("#toasts").appendChild(el);
+      setTimeout(() => el.remove(), 3200);
+    }
+
+    function fmtBytes(n) {
+      n = Number(n) || 0;
+      if (n < 1024) return n + " B";
+      const u = ["KiB", "MiB", "GiB", "TiB"];
+      let i = -1;
+      do { n /= 1024; i++; } while (n >= 1024 && i < u.length - 1);
+      return n.toFixed(n >= 100 ? 0 : n >= 10 ? 1 : 2) + " " + u[i];
+    }
+
+    function fmtSpeed(n) {
+      return fmtBytes(n) + "/s";
+    }
+
+    function fmtTime(iso) {
+      if (!iso) return "-";
+      try {
+        const d = new Date(iso);
+        if (isNaN(d)) return iso;
+        const p = (x) => String(x).padStart(2, "0");
+        return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+      } catch { return iso; }
+    }
+
+    function esc(s) {
+      return String(s ?? "").replace(/[&<>"']/g, c => ({
+        "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+      }[c]));
+    }
+
+    // Tabs
+    $$(".tab").forEach(btn => {
+      btn.addEventListener("click", () => {
+        $$(".tab").forEach(b => b.classList.remove("active"));
+        $$(".panel").forEach(p => p.classList.remove("active"));
+        btn.classList.add("active");
+        $(`#panel-${btn.dataset.tab}`).classList.add("active");
+        if (btn.dataset.tab === "downloads") {
+          loadDownloads();
+          loadFiles(state.filesPath);
+        }
+      });
+    });
+
+    function selectedSources() {
+      return $$('input[name="src"]:checked').map(i => i.value);
+    }
+
+    /** Client-side filter: checkbox toggles list without re-searching. */
+    function applySourceFilter() {
+      if (!state.lastData) {
+        $("#resultBody").innerHTML = `<tr><td colspan="6"><div class="empty"><strong>还没有结果</strong>搜索或加载近期更新试试</div></td></tr>`;
+        return;
+      }
+      const selected = selectedSources();
+      const selectedSet = new Set(selected);
+      const allItems = state.items || [];
+      const items = allItems.filter(it => selectedSet.has(it.source));
+
+      // Per-source counts from full cache; dim unchecked in meta
+      const srcMeta = (state.lastData.sources || []).map(s => {
+        const on = selectedSet.has(s.source);
+        const err = s.error ? ` <span class="err-text">失败</span>` : "";
+        const style = on ? "" : ' style="opacity:.4;text-decoration:line-through"';
+        return `<span class="src-chip"${style}><span class="dot dot-${esc(s.source)}"></span>${esc(s.source_name)} ${s.count}${err}</span>`;
+      }).join("");
+      const kw = state.lastData.keyword
+        ? `关键词「${esc(state.lastData.keyword)}」`
+        : "近期更新";
+      const note = selected.length < 3 && allItems.length
+        ? ` · 显示 <b style="color:var(--text)">${items.length}</b> / ${allItems.length}`
+        : ` · 共 <b style="color:var(--text)">${items.length}</b> 条`;
+      $("#searchMeta").innerHTML = `<span>${kw}${note}</span>${srcMeta}`;
+
+      if (!selected.length) {
+        $("#resultBody").innerHTML = `<tr><td colspan="6"><div class="empty"><strong>未选择来源</strong>勾选上方网站以显示结果</div></td></tr>`;
+        return;
+      }
+      if (!items.length) {
+        $("#resultBody").innerHTML = `<tr><td colspan="6"><div class="empty"><strong>没有找到结果</strong>换个关键词或勾选其它来源试试</div></td></tr>`;
+        return;
+      }
+
+      $("#resultBody").innerHTML = items.map((it, idx) => {
+        const seed = it.seeders != null ? `${it.seeders}${it.leechers != null ? " / " + it.leechers : ""}` : "-";
+        const canDl = !!(it.magnet || it.torrent_url);
+        return `<tr data-idx="${idx}">
+          <td><span class="tag tag-${esc(it.source)}">${esc(it.source_name)}</span></td>
+          <td class="title-cell">
+            <div class="t">${it.page_url ? `<a href="${esc(it.page_url)}" target="_blank" rel="noopener">${esc(it.title)}</a>` : esc(it.title)}</div>
+            <div class="sub">${esc(it.category || "")}${it.author ? " · " + esc(it.author) : ""}</div>
+          </td>
+          <td class="mono muted">${esc(it.size_text || "-")}</td>
+          <td class="mono muted">${seed}</td>
+          <td class="muted mono">${fmtTime(it.published)}</td>
+          <td>
+            <div class="actions">
+              <button class="btn btn-sm btn-ok dl-btn" type="button" data-idx="${idx}" ${canDl ? "" : "disabled"} title="添加 BT 下载">下载</button>
+            </div>
+          </td>
+        </tr>`;
+      }).join("");
+
+      $$(".dl-btn").forEach(btn => {
+        btn.addEventListener("click", () => addFromItem(items[+btn.dataset.idx], btn));
+      });
+    }
+
+    async function doSearch(keyword) {
+      // Always query all three sites so checkbox toggles can filter instantly
+      // without needing another network search.
+      state.loading = true;
+      $("#searchBtn").disabled = true;
+      $("#resultBody").innerHTML = `<tr><td colspan="6"><div class="loading"><span class="spinner"></span>正在聚合搜索…</div></td></tr>`;
+      $("#searchMeta").innerHTML = `<span class="loading" style="padding:0"><span class="spinner"></span>请求中</span>`;
+
+      try {
+        const params = new URLSearchParams();
+        if (keyword) params.set("q", keyword);
+        params.set("source", "dmhy,acgrip,nyaa");
+        const res = await fetch("/api/search?" + params.toString());
+        if (!res.ok) throw new Error(await res.text());
+        const data = await res.json();
+        state.items = data.items || [];
+        state.lastData = data;
+        applySourceFilter();
+      } catch (e) {
+        state.items = [];
+        state.lastData = null;
+        $("#resultBody").innerHTML = `<tr><td colspan="6"><div class="empty"><strong>搜索失败</strong>${esc(e.message)}</div></td></tr>`;
+        $("#searchMeta").innerHTML = `<span class="err-text">${esc(e.message)}</span>`;
+        toast("搜索失败: " + e.message, "err");
+      } finally {
+        state.loading = false;
+        $("#searchBtn").disabled = false;
+      }
+    }
+
+    async function addFromItem(it, btn) {
+      if (!it) return;
+      const uri = it.magnet || it.torrent_url;
+      if (!uri) {
+        toast("该条目没有可用的磁力/种子链接", "err");
+        return;
+      }
+      btn.disabled = true;
+      const old = btn.textContent;
+      btn.textContent = "…";
+      try {
+        await addDownload(uri);
+        btn.textContent = "已加";
+        setTimeout(() => { btn.textContent = old; btn.disabled = false; }, 1200);
+      } catch (e) {
+        btn.textContent = old;
+        btn.disabled = false;
+      }
+    }
+
+    async function addDownload(uri) {
+      const res = await fetch("/api/downloads", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ uri }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const msg = data.detail || JSON.stringify(data) || res.statusText;
+        toast("添加失败: " + msg, "err");
+        throw new Error(msg);
+      }
+      toast("已添加下载任务 " + (data.gid || ""));
+      updateBadge();
+      // if on downloads tab, refresh
+      if ($("#panel-downloads").classList.contains("active")) loadDownloads();
+      return data;
+    }
+
+    $("#searchForm").addEventListener("submit", (e) => {
+      e.preventDefault();
+      doSearch($("#q").value.trim());
+    });
+    $("#latestBtn").addEventListener("click", () => {
+      $("#q").value = "";
+      doSearch("");
+    });
+    // Instant list filter when toggling source checkboxes
+    $$('input[name="src"]').forEach(cb => {
+      cb.addEventListener("change", () => applySourceFilter());
+    });
+
+    // Downloads
+    async function loadDownloads() {
+      try {
+        const res = await fetch("/api/downloads");
+        if (!res.ok) throw new Error(await res.text());
+        const data = await res.json();
+        state.tasks = data.tasks || [];
+        renderDownloads(data);
+        updateBadge(data.stat);
+      } catch (e) {
+        $("#dlBody").innerHTML = `<tr><td colspan="6"><div class="empty"><strong>无法连接 aria2</strong>${esc(e.message)}</div></td></tr>`;
+      }
+    }
+
+    function updateBadge(stat) {
+      const badge = $("#dlBadge");
+      const n = stat
+        ? (stat.num_active + stat.num_waiting)
+        : state.tasks.filter(t => t.status === "active" || t.status === "waiting" || t.status === "paused").length;
+      if (n > 0) {
+        badge.textContent = n;
+        badge.classList.remove("hide");
+      } else {
+        badge.classList.add("hide");
+      }
+    }
+
+    function renderDownloads(data) {
+      const tasks = data.tasks || [];
+      const st = data.stat || {};
+      $("#gDl").textContent = fmtSpeed(st.download_speed);
+      $("#gUl").textContent = fmtSpeed(st.upload_speed);
+      $("#gActive").textContent = st.num_active ?? 0;
+      $("#gWaiting").textContent = st.num_waiting ?? 0;
+
+      if (!tasks.length) {
+        $("#dlBody").innerHTML = `<tr><td colspan="6"><div class="empty"><strong>暂无下载任务</strong>从搜索页添加，或粘贴磁力链</div></td></tr>`;
+        return;
+      }
+
+      $("#dlBody").innerHTML = tasks.map(t => {
+        const stCls = "st-" + (t.status || "waiting");
+        const seed = t.num_seeders != null ? t.num_seeders : "-";
+        const canPause = t.status === "active" || t.status === "waiting";
+        const canResume = t.status === "paused";
+        const err = t.error_message ? `<div class="sub err-text">${esc(t.error_message)}</div>` : "";
+        const doneish = t.status === "complete" || t.status === "error" || (t.progress >= 100);
+        return `<tr>
+          <td class="title-cell">
+            <div class="t">${esc(t.name)}</div>
+            <div class="sub mono">${fmtBytes(t.completed_length)} / ${fmtBytes(t.total_length)}${t.info_hash ? " · " + esc(t.info_hash.slice(0,12)) + "…" : ""}</div>
+            ${err}
+          </td>
+          <td><span class="status ${stCls}">${esc(t.status)}</span></td>
+          <td>
+            <div class="progress" title="${t.progress}%"><i style="width:${Math.min(100, t.progress || 0)}%"></i></div>
+            <div class="sub mono">${(t.progress || 0).toFixed(1)}%</div>
+          </td>
+          <td class="mono muted">↓ ${fmtSpeed(t.download_speed)}<br/>↑ ${fmtSpeed(t.upload_speed)}</td>
+          <td class="mono muted">${seed}</td>
+          <td class="col-actions">
+            <div class="actions">
+              ${canPause ? `<button class="btn btn-sm btn-warn act-pause" data-gid="${esc(t.gid)}">暂停</button>` : ""}
+              ${canResume ? `<button class="btn btn-sm btn-ok act-resume" data-gid="${esc(t.gid)}">继续</button>` : ""}
+              <div class="drop">
+                <button class="btn btn-sm btn-danger drop-toggle" type="button">删除</button>
+                <div class="drop-menu">
+                  <button type="button" class="act-rm" data-gid="${esc(t.gid)}" data-files="0">仅删任务记录</button>
+                  <button type="button" class="act-rm danger" data-gid="${esc(t.gid)}" data-files="1">${doneish ? "删记录 + 本地文件" : "取消任务 + 删已下文件"}</button>
+                </div>
+              </div>
+            </div>
+          </td>
+        </tr>`;
+      }).join("");
+
+      $$(".act-pause").forEach(b => b.addEventListener("click", () => act(b.dataset.gid, "pause")));
+      $$(".act-resume").forEach(b => b.addEventListener("click", () => act(b.dataset.gid, "resume")));
+      $$(".drop-toggle").forEach(b => {
+        b.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const drop = b.closest(".drop");
+          $$(".drop").forEach(d => { if (d !== drop) d.classList.remove("open"); });
+          drop.classList.toggle("open");
+        });
+      });
+      $$(".act-rm").forEach(b => b.addEventListener("click", () => {
+        removeTask(b.dataset.gid, b.dataset.files === "1");
+        b.closest(".drop")?.classList.remove("open");
+      }));
+    }
+
+    document.addEventListener("click", () => {
+      $$(".drop.open").forEach(d => d.classList.remove("open"));
+    });
+
+    async function act(gid, action) {
+      try {
+        const res = await fetch(`/api/downloads/${encodeURIComponent(gid)}/${action}`, { method: "POST" });
+        if (!res.ok) {
+          const d = await res.json().catch(() => ({}));
+          throw new Error(d.detail || res.statusText);
+        }
+        toast(action === "pause" ? "已暂停" : "已继续");
+        loadDownloads();
+      } catch (e) {
+        toast(e.message, "err");
+      }
+    }
+
+    async function removeTask(gid, deleteFiles) {
+      const msg = deleteFiles
+        ? "确定删除该任务，并同时删除本地已下载文件？此操作不可恢复。"
+        : "确定仅从任务列表移除？（保留本地文件）";
+      if (!confirm(msg)) return;
+      try {
+        const q = deleteFiles ? "?delete_files=true" : "";
+        const res = await fetch(`/api/downloads/${encodeURIComponent(gid)}${q}`, { method: "DELETE" });
+        const d = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(d.detail || res.statusText);
+        if (deleteFiles) {
+          const n = d.files?.count ?? 0;
+          const errN = (d.files?.errors || []).length;
+          toast(errN ? `已删任务，清理 ${n} 项（有 ${errN} 个警告）` : `已删任务并清理 ${n} 个本地项`);
+          loadFiles(state.filesPath);
+        } else {
+          toast("已移除任务记录");
+        }
+        loadDownloads();
+      } catch (e) {
+        toast(e.message, "err");
+      }
+    }
+
+    $("#refreshDl").addEventListener("click", () => { loadDownloads(); loadFiles(state.filesPath); });
+    $("#purgeDl").addEventListener("click", async () => {
+      if (!confirm("清理所有已完成/错误的任务记录？（不删除本地文件）")) return;
+      try {
+        const res = await fetch("/api/downloads/purge", { method: "POST" });
+        if (!res.ok) throw new Error(await res.text());
+        toast("已清理记录");
+        loadDownloads();
+      } catch (e) {
+        toast(e.message, "err");
+      }
+    });
+
+    async function submitMagnet() {
+      const uri = $("#magnetInput").value.trim();
+      if (!uri) {
+        toast("请输入磁力链或种子链接", "err");
+        return;
+      }
+      try {
+        await addDownload(uri);
+        $("#magnetInput").value = "";
+        loadDownloads();
+      } catch (_) {}
+    }
+    $("#addMagnetBtn").addEventListener("click", submitMagnet);
+    $("#magnetInput").addEventListener("keydown", (e) => {
+      if (e.key === "Enter") { e.preventDefault(); submitMagnet(); }
+    });
+
+    // ---- Local files browser ----
+    function fmtMtime(ts) {
+      if (!ts) return "-";
+      const d = new Date(ts * 1000);
+      const p = (x) => String(x).padStart(2, "0");
+      return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+    }
+
+    function renderBreadcrumb(path, rootLabel) {
+      const parts = (path || "").split("/").filter(Boolean);
+      let html = `<span class="crumb"><button type="button" class="linkish crumb-go" data-path="">${esc(rootLabel || "root")}</button>`;
+      let acc = "";
+      parts.forEach((part, i) => {
+        acc = acc ? acc + "/" + part : part;
+        html += `<span class="sep">/</span>`;
+        if (i === parts.length - 1) {
+          html += `<span>${esc(part)}</span>`;
+        } else {
+          html += `<button type="button" class="linkish crumb-go" data-path="${esc(acc)}">${esc(part)}</button>`;
+        }
+      });
+      html += `</span>`;
+      $("#filesBreadcrumb").innerHTML = html;
+      $$(".crumb-go").forEach(b => b.addEventListener("click", () => loadFiles(b.dataset.path || "")));
+    }
+
+    async function loadFiles(path) {
+      state.filesPath = path || "";
+      try {
+        const res = await fetch("/api/files?path=" + encodeURIComponent(state.filesPath));
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.detail || res.statusText);
+        state.filesRoot = data.root || state.filesRoot;
+        $("#filesRootLabel").textContent = data.root || "";
+        renderBreadcrumb(data.path || "", data.root || "root");
+        renderFiles(data);
+      } catch (e) {
+        $("#filesBody").innerHTML = `<tr><td colspan="5"><div class="empty"><strong>无法列出文件</strong>${esc(e.message)}</div></td></tr>`;
+        $("#filesBreadcrumb").innerHTML = `<span class="err-text">${esc(e.message)}</span>`;
+      }
+    }
+
+    function renderFiles(data) {
+      const entries = data.entries || [];
+      const rows = [];
+      if (data.path) {
+        rows.push(`<tr>
+          <td class="file-icon">↩</td>
+          <td colspan="3"><button type="button" class="name-link files-up" data-path="${esc(data.parent || "")}">..</button>
+            <span class="sub muted">上级目录</span></td>
+          <td></td>
+        </tr>`);
+      }
+      if (!entries.length && !data.path) {
+        $("#filesBody").innerHTML = `<tr><td colspan="5"><div class="empty"><strong>目录为空</strong></div></td></tr>`;
+        return;
+      }
+      entries.forEach(ent => {
+        const icon = ent.is_dir ? "📁" : "📄";
+        const size = ent.is_dir ? "-" : fmtBytes(ent.size || 0);
+        const nameBtn = ent.is_dir
+          ? `<button type="button" class="name-link files-enter" data-path="${esc(ent.path)}">${esc(ent.name)}</button>`
+          : `<span class="t">${esc(ent.name)}</span>`;
+        // download always allowed except credentials-like protected names we still allow zip of folders
+        const dlBtn = `<a class="btn btn-sm btn-ok" href="/api/files/download?path=${encodeURIComponent(ent.path)}" download title="${ent.is_dir ? "打包下载文件夹" : "下载到本地"}">下载</a>`;
+        const delBtn = ent.protected
+          ? `<span class="muted" style="font-size:.78rem">保护</span>`
+          : `<button class="btn btn-sm btn-danger files-del" type="button" data-path="${esc(ent.path)}" data-dir="${ent.is_dir ? "1" : "0"}" data-name="${esc(ent.name)}">删除</button>`;
+        rows.push(`<tr>
+          <td class="file-icon">${icon}</td>
+          <td class="title-cell">${nameBtn}${ent.protected ? ' <span class="sub muted">系统/安装目录</span>' : ""}</td>
+          <td class="mono muted">${size}</td>
+          <td class="mono muted">${fmtMtime(ent.mtime)}</td>
+          <td><div class="actions">${dlBtn}${delBtn}</div></td>
+        </tr>`);
+      });
+      $("#filesBody").innerHTML = rows.join("");
+      $$(".files-enter").forEach(b => b.addEventListener("click", () => loadFiles(b.dataset.path)));
+      $$(".files-up").forEach(b => b.addEventListener("click", () => loadFiles(b.dataset.path || "")));
+      $$(".files-del").forEach(b => b.addEventListener("click", () => deleteLocalFile(b.dataset.path, b.dataset.dir === "1", b.dataset.name)));
+    }
+
+    async function deleteLocalFile(path, isDir, name) {
+      const label = name || path;
+      const msg = isDir
+        ? `确定删除文件夹「${label}」及其全部内容？不可恢复。`
+        : `确定删除文件「${label}」？不可恢复。`;
+      if (!confirm(msg)) return;
+      try {
+        const res = await fetch("/api/files?path=" + encodeURIComponent(path), { method: "DELETE" });
+        const d = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(d.detail || res.statusText);
+        toast("已删除 " + label);
+        loadFiles(state.filesPath);
+        loadDownloads();
+      } catch (e) {
+        toast(e.message, "err");
+      }
+    }
+
+    $("#refreshFiles").addEventListener("click", () => loadFiles(state.filesPath));
+
+    // Poll downloads when tab visible
+    function startPoll() {
+      if (state.pollTimer) clearInterval(state.pollTimer);
+      state.pollTimer = setInterval(() => {
+        if ($("#panel-downloads").classList.contains("active")) {
+          loadDownloads(); // tasks only; files browser is manual refresh to avoid jump while browsing
+        } else {
+          fetch("/api/downloads").then(r => r.ok ? r.json() : null).then(d => {
+            if (d) {
+              state.tasks = d.tasks || [];
+              updateBadge(d.stat);
+            }
+          }).catch(() => {});
+        }
+      }, 3000);
+    }
+
+    // Init
+    (async () => {
+      try {
+        const h = await fetch("/api/health").then(r => r.json());
+        if (!h.aria2) toast("警告：aria2 未连接，下载功能不可用", "err");
+        if (h.download_dir) state.filesRoot = h.download_dir;
+      } catch {
+        toast("后端健康检查失败", "err");
+      }
+      doSearch("");
+      loadDownloads();
+      loadFiles("");
+      startPoll();
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,19 @@
+[Unit]
+Description=Anime Hub web UI (resource search + download manager)
+Wants=network-online.target
+After=network-online.target anime-hub-aria2.service
+Requires=anime-hub-aria2.service
+
+[Service]
+Type=simple
+User=root
+Group=root
+WorkingDirectory=/opt/anime-hub
+EnvironmentFile=-/etc/anime-hub.env
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/opt/anime-hub/.venv/bin/python -m uvicorn app.main:app --host 0.0.0.0 --port ${WEB_PORT} --log-level info
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
