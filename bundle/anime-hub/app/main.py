@@ -1,13 +1,20 @@
 """Anime Hub — aggregate anime torrent search + aria2 download manager."""
 from __future__ import annotations
 
-from typing import Optional
+from typing import List, Optional
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
-from .aria2 import Aria2Error, TASK_KEYS, aria2, normalize_task
+from .aria2 import (
+    Aria2Error,
+    TASK_KEYS,
+    aria2,
+    detect_uri_kind,
+    normalize_file,
+    normalize_task,
+)
 from .config import DOWNLOAD_DIR, PORT, SOURCES, STATIC_DIR
 from .files import delete_path, delete_task_files, list_dir, resolve_under_root
 from .sources import search_all, search_source
@@ -26,8 +33,28 @@ class SearchResponse(BaseModel):
 class AddDownloadBody(BaseModel):
     magnet: Optional[str] = Field(None, description="magnet:?xt=...")
     torrent_url: Optional[str] = Field(None, description="http(s) torrent URL")
-    uri: Optional[str] = Field(None, description="generic URI (magnet/torrent/http)")
-    name: Optional[str] = None
+    uri: Optional[str] = Field(
+        None, description="generic URI: magnet / .torrent URL / http(s) file URL"
+    )
+    name: Optional[str] = Field(None, description="output filename (HTTP) or hint")
+    pause: bool = Field(False, description="add task in paused state")
+    pause_metadata: bool = Field(
+        False,
+        description="for magnet/torrent: pause after metadata so user can pick files",
+    )
+    select_file: Optional[str] = Field(
+        None, description='comma-separated 1-based file indexes, e.g. "1,3,5"'
+    )
+    referer: Optional[str] = Field(None, description="HTTP Referer header")
+    user_agent: Optional[str] = Field(None, description="override User-Agent")
+
+
+class SelectFilesBody(BaseModel):
+    indexes: List[int] = Field(
+        ...,
+        description="1-based aria2 file indexes to download (others skipped)",
+        min_length=1,
+    )
 
 
 class GidBody(BaseModel):
@@ -127,13 +154,30 @@ async def add_download(body: AddDownloadBody):
         lower.startswith("magnet:")
         or lower.startswith("http://")
         or lower.startswith("https://")
+        or lower.startswith("ftp://")
     ):
-        raise HTTPException(400, "unsupported URI scheme (use magnet: or http(s):)")
+        raise HTTPException(
+            400, "unsupported URI scheme (use magnet: / http(s): / ftp:)"
+        )
 
-    opts = {}
+    kind = detect_uri_kind(uri)
+    opts: dict = {}
     if body.name:
-        # only works for some protocols; harmless otherwise
         opts["out"] = body.name
+    if body.pause:
+        opts["pause"] = "true"
+    if body.pause_metadata and kind in ("magnet", "torrent"):
+        # After metadata is ready the task pauses — pick files then resume
+        opts["pause-metadata"] = "true"
+    if body.select_file:
+        opts["select-file"] = body.select_file
+    if body.referer:
+        opts["referer"] = body.referer
+    if body.user_agent:
+        opts["user-agent"] = body.user_agent
+    # Pure HTTP/FTP: never treat response as torrent unless URL is .torrent
+    if kind == "http":
+        opts.setdefault("follow-torrent", "false")
 
     try:
         gid = await aria2.add_uri(uri, opts or None)
@@ -142,7 +186,42 @@ async def add_download(body: AddDownloadBody):
     except Exception as e:
         raise HTTPException(503, f"aria2 unavailable: {e}") from e
 
-    return {"ok": True, "gid": gid, "uri": uri[:200]}
+    return {"ok": True, "gid": gid, "uri": uri[:200], "kind": kind}
+
+
+@app.get("/api/downloads/{gid}/files")
+async def list_download_files(gid: str):
+    """List files inside a task (for multi-file torrents)."""
+    try:
+        files = await aria2.get_files(gid)
+        status = await aria2.tell_status(gid, ["gid", "status", "bittorrent", "infoHash"])
+    except Aria2Error as e:
+        raise HTTPException(404, str(e)) from e
+    except Exception as e:
+        raise HTTPException(503, f"aria2 unavailable: {e}") from e
+    return {
+        "gid": gid,
+        "status": status.get("status"),
+        "files": [normalize_file(f) for f in (files or [])],
+    }
+
+
+@app.post("/api/downloads/{gid}/files")
+async def select_download_files(gid: str, body: SelectFilesBody):
+    """Select which torrent files to download (1-based indexes)."""
+    try:
+        await aria2.select_files(gid, body.indexes)
+        files = await aria2.get_files(gid)
+        return {
+            "ok": True,
+            "gid": gid,
+            "indexes": sorted(set(int(i) for i in body.indexes if int(i) > 0)),
+            "files": [normalize_file(f) for f in (files or [])],
+        }
+    except Aria2Error as e:
+        raise HTTPException(400, str(e)) from e
+    except Exception as e:
+        raise HTTPException(503, f"aria2 unavailable: {e}") from e
 
 
 @app.post("/api/downloads/{gid}/pause")

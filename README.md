@@ -112,3 +112,9 @@ sudo -E ./install.sh install
 - File Browser: `http://服务器IP:8080`
 - Anime Hub: `http://服务器IP:8765`
 - 下载文件目录: `/home/share`（两个服务共用）
+
+## 下载能力
+
+- BT / 磁力 / `.torrent` 链接（支持种子内**部分文件选择**）
+- 普通 HTTP(S) / FTP 直链下载
+- 任务名完整显示（多行增高，不裁切）

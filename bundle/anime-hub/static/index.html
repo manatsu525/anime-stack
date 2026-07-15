@@ -165,24 +165,24 @@
     table.list tr:hover td { background: rgba(124,92,255,.05); }
     .title-cell { min-width: 0; max-width: 100%; }
     .title-cell .t {
-      font-weight: 600; line-height: 1.35; word-break: break-word;
+      font-weight: 600; line-height: 1.4; word-break: break-word; overflow-wrap: anywhere;
     }
     .title-cell .sub {
       color: var(--muted); font-size: .78rem; margin-top: 3px;
-      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      word-break: break-all;
     }
-    /* 名称列：限制在单元格内，绝不盖住状态列 */
+    /* 名称列：单元格内完整换行增高，不裁切；也不盖到状态列 */
     table.list.dl-table th:nth-child(1),
     table.list.dl-table td:nth-child(1) {
       width: 38%;
-      overflow: hidden;
+      overflow: hidden; /* 横向不溢出到邻列；纵向随内容增高 */
+      vertical-align: top;
     }
+    table.list.dl-table td { vertical-align: top; }
     table.list.dl-table .title-cell .t {
-      display: -webkit-box;
-      -webkit-line-clamp: 2;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
+      white-space: normal;
       word-break: break-all;
+      overflow-wrap: anywhere;
     }
     table.list.dl-table th:nth-child(2),
     table.list.dl-table td:nth-child(2) {
@@ -198,7 +198,7 @@
     table.list.dl-table td:nth-child(5) { width: 56px; overflow: hidden; white-space: nowrap; }
     table.list.dl-table th:nth-child(6),
     table.list.dl-table td:nth-child(6) {
-      width: 168px;
+      width: 188px;
       text-align: right;
       padding-right: 12px;
       overflow: visible; /* dropdown menu */
@@ -210,6 +210,68 @@
     }
     table.list.dl-table .btn-sm {
       height: 30px; padding: 0 8px; font-size: .78rem;
+    }
+    .kind-tag {
+      display: inline-block; font-size: .68rem; font-weight: 700;
+      padding: 1px 6px; border-radius: 5px; margin-right: 6px; vertical-align: middle;
+      letter-spacing: .02em;
+    }
+    .kind-bt { background: rgba(124,92,255,.18); color: #b9a6ff; }
+    .kind-http { background: rgba(88,166,255,.18); color: #79b8ff; }
+    .kind-metadata { background: rgba(210,153,34,.15); color: var(--warn); }
+    .files-toggle {
+      background: none; border: 0; color: var(--accent2); cursor: pointer;
+      font: inherit; font-size: .78rem; padding: 0; margin-top: 4px;
+    }
+    .files-toggle:hover { text-decoration: underline; }
+    tr.dl-files-row td {
+      padding: 0 12px 12px; background: rgba(0,0,0,.18);
+      border-bottom: 1px solid rgba(48,54,61,.7);
+    }
+    .files-panel {
+      border: 1px solid var(--border); border-radius: 10px;
+      background: var(--bg); padding: 10px 12px; max-height: 320px; overflow: auto;
+    }
+    .files-panel-bar {
+      display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+      margin-bottom: 8px; font-size: .82rem; color: var(--muted);
+    }
+    .files-panel-bar .actions { margin-left: auto; }
+    .file-row {
+      display: grid;
+      grid-template-columns: 22px minmax(0, 1fr) 88px 70px;
+      gap: 8px; align-items: center;
+      padding: 5px 0; border-top: 1px solid rgba(48,54,61,.55);
+      font-size: .82rem;
+    }
+    .file-row:first-of-type { border-top: 0; }
+    .file-row input { accent-color: var(--accent); cursor: pointer; }
+    .file-row .fn {
+      min-width: 0; word-break: break-all; line-height: 1.35;
+    }
+    .file-row .fn.unselected { color: var(--muted); text-decoration: line-through; opacity: .75; }
+    .file-row .fs, .file-row .fp { font-family: var(--mono); color: var(--muted); white-space: nowrap; }
+    .file-row .mini-progress {
+      height: 4px; background: var(--bg3); border-radius: 999px; overflow: hidden;
+      margin-top: 3px; border: 1px solid var(--border);
+    }
+    .file-row .mini-progress > i {
+      display: block; height: 100%; width: 0;
+      background: linear-gradient(90deg, #6d4dff, #58a6ff);
+    }
+    .add-opts {
+      display: flex; flex-wrap: wrap; gap: 10px 16px; padding: 0 14px 12px;
+      align-items: center; color: var(--muted); font-size: .85rem;
+    }
+    .add-opts label {
+      display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
+      user-select: none;
+    }
+    .add-opts input[type="checkbox"] { accent-color: var(--accent); }
+    .add-opts input[type="text"] {
+      height: 32px; padding: 0 10px; border-radius: 8px;
+      border: 1px solid var(--border); background: var(--bg); color: var(--text);
+      font-size: .85rem; min-width: 160px;
     }
     .tag {
       display: inline-block; font-size: .72rem; font-weight: 700; padding: 2px 7px;
@@ -413,8 +475,20 @@
           </div>
         </div>
         <div class="magnet-box">
-          <input id="magnetInput" type="text" placeholder="粘贴 magnet:?xt=... 或 torrent 链接，回车或点添加" />
+          <input id="magnetInput" type="text" placeholder="粘贴 magnet: / .torrent 链接 / 普通 HTTP(S) 下载地址，回车或点添加" />
           <button class="btn btn-primary" type="button" id="addMagnetBtn">添加任务</button>
+        </div>
+        <div class="add-opts">
+          <label title="仅 BT：拿到元数据后先暂停，方便勾选要下的文件">
+            <input type="checkbox" id="optPauseMeta" /> 先选文件再下载（BT）
+          </label>
+          <label title="任务添加后处于暂停状态">
+            <input type="checkbox" id="optPause" /> 添加后暂停
+          </label>
+          <label>
+            保存名
+            <input type="text" id="optOutName" placeholder="可选，HTTP 下载文件名" />
+          </label>
         </div>
         <div class="table-wrap allow-drop">
           <table class="list dl-table">
@@ -483,6 +557,8 @@
       pollTimer: null,
       filesPath: "",   // relative path under download dir
       filesRoot: "/home/share",
+      expandedGids: new Set(), // BT tasks with file picker open
+      lastStat: {},
     };
 
     function toast(msg, type = "ok") {
@@ -650,11 +726,12 @@
       }
     }
 
-    async function addDownload(uri) {
+    async function addDownload(uri, extra = {}) {
+      const body = { uri, ...extra };
       const res = await fetch("/api/downloads", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ uri }),
+        body: JSON.stringify(body),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -662,11 +739,20 @@
         toast("添加失败: " + msg, "err");
         throw new Error(msg);
       }
-      toast("已添加下载任务 " + (data.gid || ""));
+      const kindHint = data.kind === "http" ? "HTTP" : data.kind === "torrent" ? "种子" : data.kind === "magnet" ? "磁力" : "";
+      toast(`已添加${kindHint ? " " + kindHint : ""}任务 ${data.gid || ""}`);
       updateBadge();
-      // if on downloads tab, refresh
       if ($("#panel-downloads").classList.contains("active")) loadDownloads();
       return data;
+    }
+
+    function readAddOptions() {
+      const opts = {};
+      if ($("#optPause")?.checked) opts.pause = true;
+      if ($("#optPauseMeta")?.checked) opts.pause_metadata = true;
+      const name = ($("#optOutName")?.value || "").trim();
+      if (name) opts.name = name;
+      return opts;
     }
 
     $("#searchForm").addEventListener("submit", (e) => {
@@ -689,6 +775,7 @@
         if (!res.ok) throw new Error(await res.text());
         const data = await res.json();
         state.tasks = data.tasks || [];
+        state.lastStat = data.stat || {};
         renderDownloads(data);
         updateBadge(data.stat);
       } catch (e) {
@@ -709,6 +796,44 @@
       }
     }
 
+    function kindLabel(kind) {
+      if (kind === "http") return { cls: "kind-http", text: "HTTP" };
+      if (kind === "metadata") return { cls: "kind-metadata", text: "元数据" };
+      if (kind === "bt") return { cls: "kind-bt", text: "BT" };
+      return null;
+    }
+
+    function renderFilePanel(t) {
+      const files = t.files || [];
+      if (!files.length) {
+        return `<div class="files-panel"><span class="muted">暂无文件列表（磁力需先获取元数据）</span></div>`;
+      }
+      const sel = files.filter(f => f.selected).length;
+      const rows = files.map(f => {
+        const pct = Math.min(100, Number(f.progress) || 0);
+        return `<div class="file-row" data-index="${f.index}">
+          <input type="checkbox" class="file-cb" data-gid="${esc(t.gid)}" data-index="${f.index}" ${f.selected ? "checked" : ""} />
+          <div class="fn ${f.selected ? "" : "unselected"}" title="${esc(f.path || f.name)}">${esc(f.name || f.path || ("#" + f.index))}</div>
+          <div class="fs">${fmtBytes(f.length)}</div>
+          <div class="fp">
+            ${pct.toFixed(0)}%
+            <div class="mini-progress"><i style="width:${pct}%"></i></div>
+          </div>
+        </div>`;
+      }).join("");
+      return `<div class="files-panel" data-gid="${esc(t.gid)}">
+        <div class="files-panel-bar">
+          <span>已选 <b style="color:var(--text)">${sel}</b> / ${files.length} 个文件</span>
+          <div class="actions">
+            <button type="button" class="btn btn-sm files-all" data-gid="${esc(t.gid)}">全选</button>
+            <button type="button" class="btn btn-sm files-none" data-gid="${esc(t.gid)}">全不选</button>
+            <button type="button" class="btn btn-sm btn-primary files-apply" data-gid="${esc(t.gid)}">应用选择</button>
+          </div>
+        </div>
+        ${rows}
+      </div>`;
+    }
+
     function renderDownloads(data) {
       const tasks = data.tasks || [];
       const st = data.stat || {};
@@ -718,11 +843,16 @@
       $("#gWaiting").textContent = st.num_waiting ?? 0;
 
       if (!tasks.length) {
-        $("#dlBody").innerHTML = `<tr><td colspan="6"><div class="empty"><strong>暂无下载任务</strong>从搜索页添加，或粘贴磁力链</div></td></tr>`;
+        $("#dlBody").innerHTML = `<tr><td colspan="6"><div class="empty"><strong>暂无下载任务</strong>从搜索页添加，或粘贴磁力 / HTTP 链接</div></td></tr>`;
         return;
       }
 
-      $("#dlBody").innerHTML = tasks.map(t => {
+      // Drop expanded state for gids that disappeared
+      const live = new Set(tasks.map(t => t.gid));
+      [...state.expandedGids].forEach(g => { if (!live.has(g)) state.expandedGids.delete(g); });
+
+      const rows = [];
+      tasks.forEach(t => {
         const stCls = "st-" + (t.status || "waiting");
         const seed = t.num_seeders != null ? t.num_seeders : "-";
         const canPause = t.status === "active" || t.status === "waiting";
@@ -730,11 +860,22 @@
         const err = t.error_message ? `<div class="sub err-text">${esc(t.error_message)}</div>` : "";
         const doneish = t.status === "complete" || t.status === "error" || (t.progress >= 100);
         const pct = Math.min(100, Number(t.progress) || 0);
-        return `<tr>
+        const k = kindLabel(t.kind);
+        const kindHtml = k ? `<span class="kind-tag ${k.cls}">${k.text}</span>` : "";
+        const multi = (t.num_files || (t.files || []).length) > 1 || t.kind === "bt";
+        const expanded = state.expandedGids.has(t.gid);
+        const fileBtn = multi
+          ? `<button type="button" class="files-toggle" data-gid="${esc(t.gid)}">${expanded ? "▾ 收起文件" : "▸ 文件选择"} (${t.selected_files ?? "?"}/${t.num_files || (t.files || []).length})</button>`
+          : (t.kind === "http" && (t.files || [])[0]?.uris?.[0]?.uri
+            ? `<div class="sub mono" style="margin-top:4px">${esc((t.files[0].uris[0].uri || "").slice(0, 80))}${(t.files[0].uris[0].uri || "").length > 80 ? "…" : ""}</div>`
+            : "");
+
+        rows.push(`<tr data-gid="${esc(t.gid)}">
           <td class="title-cell">
-            <div class="t" title="${esc(t.name)}">${esc(t.name)}</div>
+            <div class="t">${kindHtml}${esc(t.name)}</div>
             <div class="sub mono">${fmtBytes(t.completed_length)} / ${fmtBytes(t.total_length)}${t.info_hash ? " · " + esc(t.info_hash.slice(0,12)) + "…" : ""}</div>
             ${err}
+            ${fileBtn}
           </td>
           <td><span class="status ${stCls}">${esc(t.status)}</span></td>
           <td>
@@ -756,8 +897,13 @@
               </div>
             </div>
           </td>
-        </tr>`;
-      }).join("");
+        </tr>`);
+
+        if (expanded && multi) {
+          rows.push(`<tr class="dl-files-row" data-parent="${esc(t.gid)}"><td colspan="6">${renderFilePanel(t)}</td></tr>`);
+        }
+      });
+      $("#dlBody").innerHTML = rows.join("");
 
       $$(".act-pause").forEach(b => b.addEventListener("click", () => act(b.dataset.gid, "pause")));
       $$(".act-resume").forEach(b => b.addEventListener("click", () => act(b.dataset.gid, "resume")));
@@ -773,6 +919,47 @@
         removeTask(b.dataset.gid, b.dataset.files === "1");
         b.closest(".drop")?.classList.remove("open");
       }));
+      $$(".files-toggle").forEach(b => {
+        b.addEventListener("click", () => {
+          const gid = b.dataset.gid;
+          if (state.expandedGids.has(gid)) state.expandedGids.delete(gid);
+          else state.expandedGids.add(gid);
+          renderDownloads({ tasks: state.tasks, stat: state.lastStat });
+        });
+      });
+      $$(".files-all").forEach(b => b.addEventListener("click", () => {
+        fileCbs(b.dataset.gid).forEach(cb => { cb.checked = true; });
+      }));
+      $$(".files-none").forEach(b => b.addEventListener("click", () => {
+        fileCbs(b.dataset.gid).forEach(cb => { cb.checked = false; });
+      }));
+      $$(".files-apply").forEach(b => b.addEventListener("click", () => applyFileSelection(b.dataset.gid)));
+    }
+
+    function fileCbs(gid) {
+      return $$(".file-cb").filter(cb => cb.dataset.gid === gid);
+    }
+
+    async function applyFileSelection(gid) {
+      const boxes = fileCbs(gid);
+      const indexes = boxes.filter(cb => cb.checked).map(cb => +cb.dataset.index).filter(n => n > 0);
+      if (!indexes.length) {
+        toast("请至少选择一个文件", "err");
+        return;
+      }
+      try {
+        const res = await fetch(`/api/downloads/${encodeURIComponent(gid)}/files`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ indexes }),
+        });
+        const d = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(d.detail || res.statusText);
+        toast(`已更新文件选择（${indexes.length} 个）`);
+        loadDownloads();
+      } catch (e) {
+        toast("选择失败: " + e.message, "err");
+      }
     }
 
     document.addEventListener("click", () => {
@@ -833,12 +1020,13 @@
     async function submitMagnet() {
       const uri = $("#magnetInput").value.trim();
       if (!uri) {
-        toast("请输入磁力链或种子链接", "err");
+        toast("请输入磁力链、种子链接或 HTTP(S) 下载地址", "err");
         return;
       }
       try {
-        await addDownload(uri);
+        await addDownload(uri, readAddOptions());
         $("#magnetInput").value = "";
+        // keep options for consecutive adds
         loadDownloads();
       } catch (_) {}
     }

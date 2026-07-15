@@ -1,17 +1,32 @@
-"""Minimal aria2 JSON-RPC client."""
+"""Minimal aria2 JSON-RPC client (BT + HTTP downloads)."""
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Sequence
+from urllib.parse import unquote, urlparse
 
 import httpx
 
-from .config import ARIA2_RPC_SECRET, ARIA2_RPC_URL, DOWNLOAD_DIR, HTTP_TIMEOUT
+from .config import ARIA2_RPC_SECRET, ARIA2_RPC_URL, DOWNLOAD_DIR, HTTP_TIMEOUT, USER_AGENT
 
 
 class Aria2Error(Exception):
     def __init__(self, message: str, code: Optional[int] = None):
         super().__init__(message)
         self.code = code
+
+
+def detect_uri_kind(uri: str) -> str:
+    """Return 'magnet' | 'torrent' | 'http' for a download URI."""
+    u = (uri or "").strip()
+    lower = u.lower()
+    if lower.startswith("magnet:"):
+        return "magnet"
+    if lower.startswith("http://") or lower.startswith("https://"):
+        path = urlparse(u).path.lower()
+        if path.endswith(".torrent") or ".torrent?" in lower:
+            return "torrent"
+        return "http"
+    return "http"
 
 
 class Aria2Client:
@@ -55,7 +70,6 @@ class Aria2Client:
         return await self.call("aria2.getVersion")
 
     # Extra public/ACG trackers: seed magnet/torrent files often only list dead trackers
-    # (e.g. open.acgtracker.com). Injecting these lets aria2 find peers much faster.
     DEFAULT_BT_TRACKERS = (
         "http://nyaa.tracker.wf:7777/announce,"
         "http://tracker.mywaifu.best:6969/announce,"
@@ -70,12 +84,8 @@ class Aria2Client:
         "http://open.acgtracker.com:1096/announce"
     )
 
-    async def add_uri(
-        self,
-        uri: str,
-        options: Optional[Dict[str, str]] = None,
-    ) -> str:
-        opts = {
+    def _bt_options(self) -> Dict[str, str]:
+        return {
             "dir": str(DOWNLOAD_DIR),
             "continue": "true",
             "max-connection-per-server": "16",
@@ -84,7 +94,6 @@ class Aria2Client:
             "bt-enable-lpd": "true",
             "bt-save-metadata": "true",
             "bt-load-saved-metadata": "true",
-            # Seed until share ratio reaches 10%, then stop (saves upload bandwidth)
             "seed-ratio": "0.1",
             "bt-max-peers": "128",
             "bt-tracker": self.DEFAULT_BT_TRACKERS,
@@ -93,9 +102,44 @@ class Aria2Client:
             "follow-torrent": "true",
             "check-integrity": "false",
             "file-allocation": "none",
+            "bt-remove-unselected-file": "false",
         }
+
+    def _http_options(self) -> Dict[str, str]:
+        return {
+            "dir": str(DOWNLOAD_DIR),
+            "continue": "true",
+            "max-connection-per-server": "16",
+            "split": "16",
+            "min-split-size": "1M",
+            "file-allocation": "none",
+            "check-integrity": "false",
+            "always-resume": "true",
+            "auto-file-renaming": "true",
+            "allow-overwrite": "false",
+            "user-agent": USER_AGENT,
+            # Do not treat arbitrary HTTP bodies as torrents unless URL is .torrent
+            "follow-torrent": "false",
+            "follow-metalink": "false",
+        }
+
+    def options_for_uri(self, uri: str) -> Dict[str, str]:
+        kind = detect_uri_kind(uri)
+        if kind in ("magnet", "torrent"):
+            opts = self._bt_options()
+            if kind == "torrent":
+                opts["follow-torrent"] = "true"
+            return opts
+        return self._http_options()
+
+    async def add_uri(
+        self,
+        uri: str,
+        options: Optional[Dict[str, str]] = None,
+    ) -> str:
+        opts = self.options_for_uri(uri)
         if options:
-            opts.update(options)
+            opts.update({k: str(v) for k, v in options.items() if v is not None})
         return await self.call("aria2.addUri", [[uri], opts])
 
     async def add_torrent_url(self, torrent_url: str, options: Optional[Dict[str, str]] = None) -> str:
@@ -126,6 +170,20 @@ class Aria2Client:
         if keys:
             params.append(keys)
         return await self.call("aria2.tellStatus", params)
+
+    async def get_files(self, gid: str) -> List[Dict[str, Any]]:
+        return await self.call("aria2.getFiles", [gid])
+
+    async def change_option(self, gid: str, options: Dict[str, str]) -> str:
+        return await self.call("aria2.changeOption", [gid, options])
+
+    async def select_files(self, gid: str, indexes: Sequence[int]) -> str:
+        """Select which torrent files to download (1-based indexes)."""
+        idxs = sorted({int(i) for i in indexes if int(i) > 0})
+        if not idxs:
+            raise Aria2Error("at least one file index is required")
+        # aria2 select-file is a comma-separated list of indexes
+        return await self.change_option(gid, {"select-file": ",".join(str(i) for i in idxs)})
 
     async def pause(self, gid: str) -> str:
         return await self.call("aria2.pause", [gid])
@@ -182,6 +240,13 @@ TASK_KEYS = [
 ]
 
 
+def _file_basename(path: str) -> str:
+    if not path:
+        return ""
+    path = path.rstrip("/")
+    return path.rsplit("/", 1)[-1] or path
+
+
 def _task_name(task: Dict[str, Any]) -> str:
     bt = task.get("bittorrent") or {}
     info = bt.get("info") or {}
@@ -191,11 +256,65 @@ def _task_name(task: Dict[str, Any]) -> str:
     if files:
         path = files[0].get("path") or ""
         if path:
-            return path.rsplit("/", 1)[-1] or path
+            return _file_basename(path) or path
         uris = files[0].get("uris") or []
         if uris:
-            return uris[0].get("uri", "")[:120]
+            uri = uris[0].get("uri", "")
+            # Prefer last path segment of URL
+            try:
+                p = unquote(urlparse(uri).path)
+                base = _file_basename(p)
+                if base:
+                    return base
+            except Exception:
+                pass
+            return uri[:160]
     return task.get("gid", "unknown")
+
+
+def _detect_task_kind(task: Dict[str, Any]) -> str:
+    """bt | http | metadata"""
+    bt = task.get("bittorrent") or {}
+    name = _task_name(task)
+    if name.startswith("[METADATA]") or (bt and not (bt.get("info") or {}).get("name") and task.get("infoHash")):
+        # metadata-only magnet phase often still has bittorrent mode without full info
+        files = task.get("files") or []
+        if files and len(files) == 1:
+            p = (files[0].get("path") or "").lower()
+            if "metadata" in p or not p:
+                if task.get("infoHash") and not (bt.get("info") or {}).get("name"):
+                    return "metadata"
+    if bt or task.get("infoHash"):
+        return "bt"
+    return "http"
+
+
+def normalize_file(f: Dict[str, Any]) -> Dict[str, Any]:
+    total = int(f.get("length") or 0)
+    done = int(f.get("completedLength") or 0)
+    progress = (done / total * 100.0) if total > 0 else 0.0
+    path = f.get("path") or ""
+    selected_raw = f.get("selected")
+    if isinstance(selected_raw, bool):
+        selected = selected_raw
+    else:
+        selected = str(selected_raw).lower() in ("true", "1", "yes")
+    uris = []
+    for u in f.get("uris") or []:
+        if isinstance(u, dict):
+            uris.append({"uri": u.get("uri"), "status": u.get("status")})
+        elif u:
+            uris.append({"uri": str(u), "status": None})
+    return {
+        "index": int(f.get("index") or 0),
+        "path": path,
+        "name": _file_basename(path) or path or f"file#{f.get('index')}",
+        "length": total,
+        "completed_length": done,
+        "progress": round(progress, 2),
+        "selected": selected,
+        "uris": uris,
+    }
 
 
 def normalize_task(task: Dict[str, Any]) -> Dict[str, Any]:
@@ -204,10 +323,18 @@ def normalize_task(task: Dict[str, Any]) -> Dict[str, Any]:
     dlspeed = int(task.get("downloadSpeed") or 0)
     ulspeed = int(task.get("uploadSpeed") or 0)
     progress = (done / total * 100.0) if total > 0 else 0.0
+    files = [normalize_file(f) for f in (task.get("files") or [])]
+    kind = _detect_task_kind(task)
+    # refine metadata detection
+    name = _task_name(task)
+    if name.startswith("[METADATA]"):
+        kind = "metadata"
+    selected_count = sum(1 for f in files if f["selected"])
     return {
         "gid": task.get("gid"),
-        "name": _task_name(task),
+        "name": name,
         "status": task.get("status"),
+        "kind": kind,  # bt | http | metadata
         "total_length": total,
         "completed_length": done,
         "progress": round(progress, 2),
@@ -219,14 +346,12 @@ def normalize_task(task: Dict[str, Any]) -> Dict[str, Any]:
         "dir": task.get("dir"),
         "error_code": task.get("errorCode"),
         "error_message": task.get("errorMessage"),
-        "files": [
-            {
-                "path": f.get("path"),
-                "length": int(f.get("length") or 0),
-                "completed_length": int(f.get("completedLength") or 0),
-            }
-            for f in (task.get("files") or [])
-        ],
+        "followed_by": task.get("followedBy") or [],
+        "following": task.get("following"),
+        "belongs_to": task.get("belongsTo"),
+        "num_files": len(files),
+        "selected_files": selected_count,
+        "files": files,
     }
 
 
