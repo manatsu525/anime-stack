@@ -209,10 +209,17 @@ class Aria2Client:
         await self.change_option(gid, {"select-file": select_val})
 
         if was_running:
+            # brief yield so aria2 applies option before resume
+            import asyncio
+
+            await asyncio.sleep(0.15)
             try:
                 await self.unpause(gid)
             except Aria2Error:
-                pass
+                try:
+                    await self.call("aria2.unpause", [gid])
+                except Aria2Error:
+                    pass
 
         return {"select-file": select_val, "was_running": was_running, "status_before": st}
     async def pause(self, gid: str) -> str:
