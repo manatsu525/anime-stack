@@ -37,7 +37,7 @@
     a { color: var(--accent2); text-decoration: none; }
     a:hover { text-decoration: underline; }
 
-    .app { max-width: 1280px; margin: 0 auto; padding: 20px 18px 60px; }
+    .app { max-width: 1480px; margin: 0 auto; padding: 20px 18px 60px; }
 
     header.top {
       display: flex; flex-wrap: wrap; align-items: center; gap: 14px 20px;
@@ -170,6 +170,36 @@
     .title-cell .sub {
       color: var(--muted); font-size: .78rem; margin-top: 3px;
       word-break: break-all;
+    }
+    /* 搜索结果：标题列尽量宽，其它列收紧；窄屏可横向滚动 */
+    #resultTable {
+      table-layout: fixed;
+      width: 100%;
+      min-width: 1080px;
+    }
+    #resultTable th:nth-child(1),
+    #resultTable td:nth-child(1) { width: 86px; }
+    #resultTable th:nth-child(2),
+    #resultTable td:nth-child(2) {
+      width: auto;
+      min-width: 520px;
+    }
+    #resultTable th:nth-child(3),
+    #resultTable td:nth-child(3) { width: 88px; }
+    #resultTable th:nth-child(4),
+    #resultTable td:nth-child(4) { width: 72px; }
+    #resultTable th:nth-child(5),
+    #resultTable td:nth-child(5) { width: 132px; }
+    #resultTable th:nth-child(6),
+    #resultTable td:nth-child(6) { width: 88px; }
+    #resultTable .title-cell {
+      min-width: 520px;
+      max-width: none;
+    }
+    #resultTable .title-cell .t {
+      white-space: normal;
+      word-break: break-word;
+      overflow-wrap: anywhere;
     }
     /* 名称列：单元格内完整换行增高，不裁切；也不盖到状态列 */
     table.list.dl-table th:nth-child(1),
@@ -398,8 +428,8 @@
     @media (max-width: 720px) {
       .tabs { margin-left: 0; width: 100%; }
       .tab { flex: 1; }
-      .title-cell { max-width: 280px; }
       .dl-toolbar .stat { margin-left: 0; width: 100%; }
+      #resultTable .title-cell { min-width: 360px; }
     }
   </style>
 </head>
@@ -445,12 +475,12 @@
           <table class="list" id="resultTable">
             <thead>
               <tr>
-                <th style="width:88px">来源</th>
+                <th>来源</th>
                 <th>标题</th>
-                <th style="width:100px">大小</th>
-                <th style="width:90px">做种</th>
-                <th style="width:140px">发布时间</th>
-                <th style="width:120px">操作</th>
+                <th>大小</th>
+                <th>做种</th>
+                <th>发布时间</th>
+                <th>操作</th>
               </tr>
             </thead>
             <tbody id="resultBody">
