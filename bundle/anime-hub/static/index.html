@@ -37,7 +37,7 @@
     a { color: var(--accent2); text-decoration: none; }
     a:hover { text-decoration: underline; }
 
-    .app { max-width: 1280px; margin: 0 auto; padding: 20px 18px 60px; }
+    .app { max-width: 1480px; margin: 0 auto; padding: 20px 18px 60px; }
 
     header.top {
       display: flex; flex-wrap: wrap; align-items: center; gap: 14px 20px;
@@ -165,31 +165,45 @@
     table.list tr:hover td { background: rgba(124,92,255,.05); }
     .title-cell { min-width: 0; max-width: 100%; }
     .title-cell .t {
-      font-weight: 600; line-height: 1.35; word-break: break-word;
+      font-weight: 600; line-height: 1.4; word-break: break-word; overflow-wrap: anywhere;
     }
     .title-cell .sub {
       color: var(--muted); font-size: .78rem; margin-top: 3px;
-      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      word-break: break-all;
     }
-    /* 搜索结果：只加宽标题列占比，不改字体 */
+    /* 搜索结果：标题列尽量宽；仅标题列字号略小，其它不变 */
     #resultTable {
       table-layout: fixed;
       width: 100%;
+      min-width: 1080px;
     }
     #resultTable th:nth-child(1),
-    #resultTable td:nth-child(1) { width: 78px; }
+    #resultTable td:nth-child(1) { width: 86px; }
     #resultTable th:nth-child(2),
-    #resultTable td:nth-child(2) { width: 52%; }
+    #resultTable td:nth-child(2) {
+      width: auto;
+      min-width: 520px;
+    }
     #resultTable th:nth-child(3),
-    #resultTable td:nth-child(3) { width: 86px; }
+    #resultTable td:nth-child(3) { width: 88px; }
     #resultTable th:nth-child(4),
     #resultTable td:nth-child(4) { width: 72px; }
     #resultTable th:nth-child(5),
-    #resultTable td:nth-child(5) { width: 128px; }
+    #resultTable td:nth-child(5) { width: 132px; }
     #resultTable th:nth-child(6),
     #resultTable td:nth-child(6) { width: 88px; }
     #resultTable .title-cell {
+      min-width: 520px;
       max-width: none;
+    }
+    #resultTable .title-cell .t {
+      font-size: .82rem; /* 仅标题列略缩小，其余列保持 table .9rem */
+      white-space: normal;
+      word-break: break-word;
+      overflow-wrap: anywhere;
+    }
+    #resultTable .title-cell .sub {
+      font-size: .72rem;
     }
     /* 名称列：单元格内完整换行增高，不裁切；也不盖到状态列 */
     table.list.dl-table th:nth-child(1),
@@ -418,9 +432,8 @@
     @media (max-width: 720px) {
       .tabs { margin-left: 0; width: 100%; }
       .tab { flex: 1; }
-      .title-cell { max-width: 280px; }
-      #resultTable .title-cell { max-width: none; }
       .dl-toolbar .stat { margin-left: 0; width: 100%; }
+      #resultTable .title-cell { min-width: 360px; }
     }
   </style>
 </head>
