@@ -208,14 +208,18 @@ async def list_download_files(gid: str):
 
 @app.post("/api/downloads/{gid}/files")
 async def select_download_files(gid: str, body: SelectFilesBody):
-    """Select which torrent files to download (1-based indexes)."""
+    """Select which torrent files to download (1-based indexes).
+
+    Active tasks are briefly paused so aria2 accepts select-file, then resumed.
+    """
     try:
-        await aria2.select_files(gid, body.indexes)
+        meta = await aria2.select_files(gid, body.indexes)
         files = await aria2.get_files(gid)
         return {
             "ok": True,
             "gid": gid,
             "indexes": sorted(set(int(i) for i in body.indexes if int(i) > 0)),
+            "select_file": meta.get("select-file"),
             "files": [normalize_file(f) for f in (files or [])],
         }
     except Aria2Error as e:

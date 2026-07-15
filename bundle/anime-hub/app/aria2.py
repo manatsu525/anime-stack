@@ -177,14 +177,44 @@ class Aria2Client:
     async def change_option(self, gid: str, options: Dict[str, str]) -> str:
         return await self.call("aria2.changeOption", [gid, options])
 
-    async def select_files(self, gid: str, indexes: Sequence[int]) -> str:
-        """Select which torrent files to download (1-based indexes)."""
+    async def select_files(self, gid: str, indexes: Sequence[int]) -> Dict[str, Any]:
+        """Select which torrent files to download (1-based indexes).
+
+        aria2 often ignores select-file while a task is actively downloading,
+        so we pause first when needed, apply the option, then resume.
+        """
         idxs = sorted({int(i) for i in indexes if int(i) > 0})
         if not idxs:
             raise Aria2Error("at least one file index is required")
-        # aria2 select-file is a comma-separated list of indexes
-        return await self.change_option(gid, {"select-file": ",".join(str(i) for i in idxs)})
 
+        st = "unknown"
+        try:
+            info = await self.tell_status(gid, ["status"])
+            st = info.get("status") or "unknown"
+        except Aria2Error:
+            pass
+
+        was_running = st in ("active", "waiting")
+        if was_running:
+            try:
+                await self.pause(gid)
+            except Aria2Error:
+                await self.call("aria2.forcePause", [gid])
+
+        # Prefer compact range form when contiguous (e.g. 1-15)
+        select_val = ",".join(str(i) for i in idxs)
+        if idxs == list(range(idxs[0], idxs[-1] + 1)) and len(idxs) > 3:
+            select_val = f"{idxs[0]}-{idxs[-1]}"
+
+        await self.change_option(gid, {"select-file": select_val})
+
+        if was_running:
+            try:
+                await self.unpause(gid)
+            except Aria2Error:
+                pass
+
+        return {"select-file": select_val, "was_running": was_running, "status_before": st}
     async def pause(self, gid: str) -> str:
         return await self.call("aria2.pause", [gid])
 
