@@ -4,6 +4,8 @@
 
 仓库：https://github.com/manatsu525/anime-stack
 
+> 以下安装和运维命令默认使用 **root 用户**执行。
+
 ## 目录结构
 
 ```
@@ -24,7 +26,7 @@ anime-stack/
 git clone https://github.com/manatsu525/anime-stack.git
 cd anime-stack
 chmod +x install.sh
-sudo ./install.sh install
+./install.sh install
 ```
 
 ### 方式二：只下载打包源码（不需要 git）
@@ -34,7 +36,7 @@ curl -fsSL https://github.com/manatsu525/anime-stack/archive/refs/heads/main.tar
   | tar -xz --strip-components=1
 
 chmod +x install.sh
-sudo ./install.sh install
+./install.sh install
 ```
 
 装到指定目录示例：
@@ -43,7 +45,7 @@ sudo ./install.sh install
 mkdir -p /root/anime-stack && cd /root/anime-stack
 curl -fsSL https://github.com/manatsu525/anime-stack/archive/refs/heads/main.tar.gz \
   | tar -xz --strip-components=1
-chmod +x install.sh && sudo ./install.sh install
+chmod +x install.sh && ./install.sh install
 ```
 
 也可用 scp 把本目录拷到服务器任意位置后再执行 `./install.sh install`。
@@ -59,17 +61,17 @@ chmod +x install.sh && sudo ./install.sh install
 ## 卸载
 
 ```bash
-sudo ./install.sh uninstall           # 卸服务与程序，保留 /home/share 下载数据
-sudo ./install.sh uninstall --purge   # 连下载数据一起清（保留本安装包目录）
+./install.sh uninstall           # 卸服务与程序，保留 /home/share 下载数据
+./install.sh uninstall --purge   # 连下载数据一起清（保留本安装包目录）
 ```
 
 ## 运维
 
 ```bash
-sudo ./install.sh status
-sudo ./install.sh restart
-sudo ./install.sh stop
-sudo ./install.sh start
+./install.sh status
+./install.sh restart
+./install.sh stop
+./install.sh start
 ```
 
 或直接：
@@ -102,7 +104,7 @@ export FILEBROWSER_USER=admin
 export FILEBROWSER_PASSWORD='your-strong-password'   # 不设则自动生成
 export ARIA2_RPC_SECRET=animehub
 
-sudo -E ./install.sh install
+./install.sh install
 ```
 
 凭据写入：`/root/anime-stack-credentials.txt`
