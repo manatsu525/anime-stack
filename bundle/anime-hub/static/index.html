@@ -137,9 +137,21 @@
     .err-text { color: var(--err); }
 
     .table-wrap { overflow-x: auto; max-width: 100%; }
+    /* download tasks: horizontal scroll when narrow; cells never paint over neighbors */
+    .table-wrap.allow-drop {
+      overflow-x: auto;
+      overflow-y: visible;
+      padding-bottom: 4px;
+      -webkit-overflow-scrolling: touch;
+    }
     table.list {
       width: 100%; border-collapse: collapse; font-size: .9rem;
       table-layout: auto;
+    }
+    table.list.dl-table {
+      table-layout: fixed;
+      width: 100%;
+      min-width: 920px; /* 窄屏左右滑，不把列挤重叠 */
     }
     table.list th {
       text-align: left; padding: 10px 10px; color: var(--muted); font-weight: 600;
@@ -159,87 +171,45 @@
       color: var(--muted); font-size: .78rem; margin-top: 3px;
       overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
     }
-
-    /* Download tasks: card list (avoids table name/status overlap) */
-    .dl-list {
-      display: flex; flex-direction: column; gap: 0;
-      border-top: 1px solid var(--border);
-      padding: 0 0 4px;
+    /* 名称列：限制在单元格内，绝不盖住状态列 */
+    table.list.dl-table th:nth-child(1),
+    table.list.dl-table td:nth-child(1) {
+      width: 38%;
+      overflow: hidden;
     }
-    .dl-item {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) auto;
-      grid-template-areas:
-        "head head"
-        "prog prog"
-        "meta actions";
-      gap: 8px 14px;
-      padding: 14px 16px;
-      border-bottom: 1px solid rgba(48,54,61,.7);
-      align-items: center;
-    }
-    .dl-item:last-child { border-bottom: 0; }
-    .dl-item:hover { background: rgba(124,92,255,.05); }
-    .dl-item-head {
-      grid-area: head;
-      display: flex; align-items: flex-start; gap: 12px;
-      min-width: 0;
-    }
-    .dl-item-name {
-      flex: 1 1 auto; min-width: 0;
-    }
-    .dl-item-name .t {
-      font-weight: 600; line-height: 1.4;
-      word-break: break-word; overflow-wrap: anywhere;
-      font-size: .92rem;
-    }
-    .dl-item-name .sub {
-      color: var(--muted); font-size: .78rem; margin-top: 4px;
+    table.list.dl-table .title-cell .t {
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
       word-break: break-all;
     }
-    .dl-item-status {
-      flex: 0 0 auto;
-      margin-top: 2px;
+    table.list.dl-table th:nth-child(2),
+    table.list.dl-table td:nth-child(2) {
+      width: 88px;
+      overflow: hidden;
+      white-space: nowrap;
     }
-    .dl-item-prog {
-      grid-area: prog;
-      display: flex; align-items: center; gap: 10px;
-      min-width: 0;
+    table.list.dl-table th:nth-child(3),
+    table.list.dl-table td:nth-child(3) { width: 130px; overflow: hidden; }
+    table.list.dl-table th:nth-child(4),
+    table.list.dl-table td:nth-child(4) { width: 100px; overflow: hidden; white-space: nowrap; }
+    table.list.dl-table th:nth-child(5),
+    table.list.dl-table td:nth-child(5) { width: 56px; overflow: hidden; white-space: nowrap; }
+    table.list.dl-table th:nth-child(6),
+    table.list.dl-table td:nth-child(6) {
+      width: 168px;
+      text-align: right;
+      padding-right: 12px;
+      overflow: visible; /* dropdown menu */
     }
-    .dl-item-prog .progress {
-      flex: 1 1 auto; min-width: 0; max-width: none;
+    table.list.dl-table .col-actions .actions {
+      flex-wrap: nowrap;
+      justify-content: flex-end;
+      gap: 4px;
     }
-    .dl-item-prog .pct {
-      flex: 0 0 auto; font-family: var(--mono); font-size: .82rem;
-      color: var(--muted); min-width: 3.6em; text-align: right;
-    }
-    .dl-item-meta {
-      grid-area: meta;
-      display: flex; flex-wrap: wrap; gap: 6px 14px;
-      color: var(--muted); font-size: .82rem; font-family: var(--mono);
-      min-width: 0;
-    }
-    .dl-item-actions {
-      grid-area: actions;
-      display: flex; justify-content: flex-end; align-items: center;
-    }
-    .dl-item-actions .actions {
-      flex-wrap: nowrap; gap: 6px; justify-content: flex-end;
-    }
-    .dl-item-actions .btn-sm {
-      height: 30px; padding: 0 10px; font-size: .78rem;
-    }
-    @media (max-width: 640px) {
-      .dl-item {
-        grid-template-columns: 1fr;
-        grid-template-areas:
-          "head"
-          "prog"
-          "meta"
-          "actions";
-      }
-      .dl-item-actions { justify-content: flex-start; }
-      .dl-item-actions .actions { flex-wrap: wrap; }
+    table.list.dl-table .btn-sm {
+      height: 30px; padding: 0 8px; font-size: .78rem;
     }
     .tag {
       display: inline-block; font-size: .72rem; font-weight: 700; padding: 2px 7px;
@@ -291,15 +261,16 @@
 
     .progress {
       height: 8px; background: var(--bg); border-radius: 999px; overflow: hidden;
-      width: 100%; min-width: 0; border: 1px solid var(--border);
+      width: 100%; min-width: 0; max-width: 110px; border: 1px solid var(--border);
     }
+    table.list.dl-table .progress { max-width: 100%; }
     .progress > i {
       display: block; height: 100%; background: linear-gradient(90deg, #6d4dff, #58a6ff);
       border-radius: 999px; width: 0%; transition: width .3s ease;
     }
     .status {
-      display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: .75rem;
-      font-weight: 700; white-space: nowrap; line-height: 1.4;
+      display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: .75rem;
+      font-weight: 700; white-space: nowrap;
     }
     .st-active { background: rgba(63,185,80,.15); color: var(--ok); }
     .st-waiting, .st-paused { background: rgba(210,153,34,.15); color: var(--warn); }
@@ -445,8 +416,22 @@
           <input id="magnetInput" type="text" placeholder="粘贴 magnet:?xt=... 或 torrent 链接，回车或点添加" />
           <button class="btn btn-primary" type="button" id="addMagnetBtn">添加任务</button>
         </div>
-        <div class="dl-list" id="dlBody">
-          <div class="empty"><strong>暂无下载任务</strong>从搜索页添加，或粘贴磁力链</div>
+        <div class="table-wrap allow-drop">
+          <table class="list dl-table">
+            <thead>
+              <tr>
+                <th>名称</th>
+                <th>状态</th>
+                <th>进度</th>
+                <th>速度</th>
+                <th>做种</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="dlBody">
+              <tr><td colspan="6"><div class="empty"><strong>暂无下载任务</strong>从搜索页添加，或粘贴磁力链</div></td></tr>
+            </tbody>
+          </table>
         </div>
       </div>
 
@@ -698,11 +683,6 @@
     });
 
     // Downloads
-    const STATUS_LABEL = {
-      active: "下载中", waiting: "排队中", paused: "已暂停",
-      complete: "已完成", error: "错误", removed: "已移除",
-    };
-
     async function loadDownloads() {
       try {
         const res = await fetch("/api/downloads");
@@ -712,7 +692,7 @@
         renderDownloads(data);
         updateBadge(data.stat);
       } catch (e) {
-        $("#dlBody").innerHTML = `<div class="empty"><strong>无法连接 aria2</strong>${esc(e.message)}</div>`;
+        $("#dlBody").innerHTML = `<tr><td colspan="6"><div class="empty"><strong>无法连接 aria2</strong>${esc(e.message)}</div></td></tr>`;
       }
     }
 
@@ -738,39 +718,32 @@
       $("#gWaiting").textContent = st.num_waiting ?? 0;
 
       if (!tasks.length) {
-        $("#dlBody").innerHTML = `<div class="empty"><strong>暂无下载任务</strong>从搜索页添加，或粘贴磁力链</div>`;
+        $("#dlBody").innerHTML = `<tr><td colspan="6"><div class="empty"><strong>暂无下载任务</strong>从搜索页添加，或粘贴磁力链</div></td></tr>`;
         return;
       }
 
       $("#dlBody").innerHTML = tasks.map(t => {
-        const rawSt = t.status || "waiting";
-        const stCls = "st-" + rawSt;
-        const stLabel = STATUS_LABEL[rawSt] || rawSt;
+        const stCls = "st-" + (t.status || "waiting");
         const seed = t.num_seeders != null ? t.num_seeders : "-";
-        const canPause = rawSt === "active" || rawSt === "waiting";
-        const canResume = rawSt === "paused";
+        const canPause = t.status === "active" || t.status === "waiting";
+        const canResume = t.status === "paused";
         const err = t.error_message ? `<div class="sub err-text">${esc(t.error_message)}</div>` : "";
-        const doneish = rawSt === "complete" || rawSt === "error" || (t.progress >= 100);
+        const doneish = t.status === "complete" || t.status === "error" || (t.progress >= 100);
         const pct = Math.min(100, Number(t.progress) || 0);
-        return `<div class="dl-item" data-gid="${esc(t.gid)}">
-          <div class="dl-item-head">
-            <div class="dl-item-name">
-              <div class="t" title="${esc(t.name)}">${esc(t.name)}</div>
-              <div class="sub mono">${fmtBytes(t.completed_length)} / ${fmtBytes(t.total_length)}${t.info_hash ? " · " + esc(t.info_hash.slice(0,12)) + "…" : ""}</div>
-              ${err}
-            </div>
-            <div class="dl-item-status"><span class="status ${stCls}">${esc(stLabel)}</span></div>
-          </div>
-          <div class="dl-item-prog">
+        return `<tr>
+          <td class="title-cell">
+            <div class="t" title="${esc(t.name)}">${esc(t.name)}</div>
+            <div class="sub mono">${fmtBytes(t.completed_length)} / ${fmtBytes(t.total_length)}${t.info_hash ? " · " + esc(t.info_hash.slice(0,12)) + "…" : ""}</div>
+            ${err}
+          </td>
+          <td><span class="status ${stCls}">${esc(t.status)}</span></td>
+          <td>
             <div class="progress" title="${pct}%"><i style="width:${pct}%"></i></div>
-            <span class="pct">${pct.toFixed(1)}%</span>
-          </div>
-          <div class="dl-item-meta">
-            <span>↓ ${fmtSpeed(t.download_speed)}</span>
-            <span>↑ ${fmtSpeed(t.upload_speed)}</span>
-            <span>做种 ${seed}</span>
-          </div>
-          <div class="dl-item-actions">
+            <div class="sub mono">${pct.toFixed(1)}%</div>
+          </td>
+          <td class="mono muted">↓ ${fmtSpeed(t.download_speed)}<br/>↑ ${fmtSpeed(t.upload_speed)}</td>
+          <td class="mono muted">${seed}</td>
+          <td class="col-actions">
             <div class="actions">
               ${canPause ? `<button class="btn btn-sm btn-warn act-pause" data-gid="${esc(t.gid)}">暂停</button>` : ""}
               ${canResume ? `<button class="btn btn-sm btn-ok act-resume" data-gid="${esc(t.gid)}">继续</button>` : ""}
@@ -782,8 +755,8 @@
                 </div>
               </div>
             </div>
-          </div>
-        </div>`;
+          </td>
+        </tr>`;
       }).join("");
 
       $$(".act-pause").forEach(b => b.addEventListener("click", () => act(b.dataset.gid, "pause")));
