@@ -195,15 +195,21 @@
     #resultTable .title-cell {
       min-width: 520px;
       max-width: none;
+      font-size: 12px; /* 标题列整体缩小，其它列仍用 table .9rem */
+      line-height: 1.35;
     }
-    #resultTable .title-cell .t {
-      font-size: .82rem; /* 仅标题列略缩小，其余列保持 table .9rem */
+    #resultTable .title-cell .t,
+    #resultTable .title-cell .t a {
+      font-size: 12px !important;
+      font-weight: 500;
+      line-height: 1.35;
       white-space: normal;
       word-break: break-word;
       overflow-wrap: anywhere;
     }
     #resultTable .title-cell .sub {
-      font-size: .72rem;
+      font-size: 11px !important;
+      line-height: 1.3;
     }
     /* 名称列：单元格内完整换行增高，不裁切；也不盖到状态列 */
     table.list.dl-table th:nth-child(1),
